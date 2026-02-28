@@ -97,6 +97,9 @@ def get_scrape_progress():
         total_images = session.run(
             "MATCH (i:Image) RETURN count(i) AS n"
         ).single()["n"]
+        with_characteristics = session.run(
+            "MATCH (p:Plant) WHERE p.wiki_summary IS NOT NULL RETURN count(p) AS n"
+        ).single()["n"]
         recent = session.run(
             "MATCH (p:Plant) WHERE p.growth_habit_primary IS NOT NULL "
             "RETURN p.scientific_name AS name, p.growth_habit_primary AS habit, "
@@ -109,6 +112,7 @@ def get_scrape_progress():
     pct_usda = round(enriched / total * 100, 1) if total else 0
     pct_gbif = round(with_gbif / total * 100, 1) if total else 0
     pct_images = round(with_images / total * 100, 1) if total else 0
+    pct_chars = round(with_characteristics / total * 100, 1) if total else 0
 
     return {
         "total_plants": total,
@@ -119,6 +123,8 @@ def get_scrape_progress():
         "plants_with_images": with_images,
         "images_percent": pct_images,
         "total_images_downloaded": total_images,
+        "characteristics_enriched": with_characteristics,
+        "characteristics_percent": pct_chars,
         "complete": enriched >= total,
         "recent_plants": recent_plants,
     }
@@ -200,18 +206,11 @@ def get_plants(
     search: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    # Native status: comma-separated include values, prefix with ! to exclude
-    # e.g. native_status=N  → only native
-    # e.g. native_status=!I → exclude introduced
-    # e.g. native_status=N,U → native OR uncertain
     native_status: Optional[str] = Query(None, description="Filter by native status. Comma-separated values (N,I,U). Prefix with ! to exclude."),
-    # Boolean filters: "true" = must have, "false" = must NOT have, omit = no filter
     wildlife: Optional[str] = Query(None, description="Filter by wildlife value: 'true', 'false', or omit"),
     pollinator: Optional[str] = Query(None, description="Filter by pollinator value: 'true', 'false', or omit"),
     wetland: Optional[str] = Query(None, description="Filter by wetland status: 'true', 'false', or omit"),
-    # Duration filter: comma-separated include values, prefix with ! to exclude
     duration: Optional[str] = Query(None, description="Filter by duration. Comma-separated (Perennial,Annual,Biennial). Prefix with ! to exclude."),
-    # Legacy support
     native_only: Optional[bool] = Query(None),
 ):
     """Return plants with rich filtering support."""
@@ -220,26 +219,21 @@ def get_plants(
     conditions = []
     params: dict = {"skip": skip, "limit": limit}
 
-    # ── Legacy native_only support ──
     if native_only is True:
         conditions.append("p.native_status = 'N'")
 
-    # ── Native status filter ──
     if native_status:
         if native_status.startswith("!"):
-            # Exclude these values
             excluded = [v.strip() for v in native_status[1:].split(",") if v.strip()]
             if excluded:
                 excl_list = ", ".join([f"'{v}'" for v in excluded])
                 conditions.append(f"NOT p.native_status IN [{excl_list}]")
         else:
-            # Include only these values
             included = [v.strip() for v in native_status.split(",") if v.strip()]
             if included:
                 incl_list = ", ".join([f"'{v}'" for v in included])
                 conditions.append(f"p.native_status IN [{incl_list}]")
 
-    # ── Category filter ──
     if category and category != "all":
         target_habits = [
             k for k, v in CATEGORY_MAP.items()
@@ -251,7 +245,6 @@ def get_plants(
             )
             conditions.append(f"({habit_conditions})")
 
-    # ── Search filter ──
     if search:
         conditions.append(
             "(toLower(p.scientific_name) CONTAINS toLower($search) OR "
@@ -259,7 +252,6 @@ def get_plants(
         )
         params["search"] = search
 
-    # ── Boolean filters ──
     bool_field_map = {
         "wildlife": "has_wildlife_value",
         "pollinator": "has_pollinator_value",
@@ -272,7 +264,6 @@ def get_plants(
         elif filter_val == "false":
             conditions.append(f"(p.{db_field} IS NULL OR p.{db_field} = 'False')")
 
-    # ── Duration filter ──
     if duration:
         if duration.startswith("!"):
             excluded_durations = [v.strip() for v in duration[1:].split(",") if v.strip()]
@@ -303,6 +294,8 @@ def get_plants(
         "       p.has_wildlife_value AS has_wildlife_value, "
         "       p.has_pollinator_value AS has_pollinator_value, "
         "       p.has_wetland_data AS has_wetland_data, "
+        "       p.active_season AS active_season, "
+        "       p.iucn_threat_status AS iucn_threat_status, "
         "       thumbnail "
         "ORDER BY p.scientific_name "
         "SKIP $skip LIMIT $limit"
@@ -325,7 +318,7 @@ def get_plants(
 
 @app.get("/api/plants/{scientific_name:path}")
 def get_plant_detail(scientific_name: str):
-    """Return full details for a single plant including all images."""
+    """Return full details for a single plant including all images and characteristics."""
     driver = get_driver()
     with driver.session() as session:
         result = session.run(

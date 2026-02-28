@@ -3,7 +3,7 @@ Fauquier County Native Plant Catalogue - FastAPI Backend
 """
 
 import os
-from typing import Optional
+from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -81,9 +81,7 @@ def root():
 
 @app.get("/api/scrape/progress")
 def get_scrape_progress():
-    """
-    Returns live scraping progress by querying Neo4j for enrichment counts.
-    """
+    """Returns live scraping progress by querying Neo4j for enrichment counts."""
     driver = get_driver()
     with driver.session() as session:
         total = session.run("MATCH (p:Plant) RETURN count(p) AS n").single()["n"]
@@ -99,7 +97,6 @@ def get_scrape_progress():
         total_images = session.run(
             "MATCH (i:Image) RETURN count(i) AS n"
         ).single()["n"]
-        # Sample of recently enriched plants
         recent = session.run(
             "MATCH (p:Plant) WHERE p.growth_habit_primary IS NOT NULL "
             "RETURN p.scientific_name AS name, p.growth_habit_primary AS habit, "
@@ -169,23 +166,80 @@ def get_categories():
     return {"categories": categories}
 
 
+@app.get("/api/filter-options")
+def get_filter_options():
+    """Return all distinct values for filterable fields."""
+    driver = get_driver()
+    with driver.session() as session:
+        durations = session.run(
+            "MATCH (p:Plant) WHERE p.duration IS NOT NULL "
+            "UNWIND split(p.duration, ', ') AS d "
+            "RETURN DISTINCT d AS duration ORDER BY d"
+        )
+        duration_values = [r["duration"] for r in durations if r["duration"]]
+
+    driver.close()
+    return {
+        "durations": duration_values,
+        "native_statuses": [
+            {"value": "N", "label": "Native"},
+            {"value": "I", "label": "Introduced"},
+            {"value": "U", "label": "Status Unknown"},
+        ],
+        "boolean_filters": [
+            {"key": "wildlife", "label": "Wildlife Value"},
+            {"key": "pollinator", "label": "Pollinator Plant"},
+            {"key": "wetland", "label": "Wetland Species"},
+        ]
+    }
+
+
 @app.get("/api/plants")
 def get_plants(
     category: Optional[str] = Query(None),
-    native_only: bool = Query(True),
     search: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    # Native status: comma-separated include values, prefix with ! to exclude
+    # e.g. native_status=N  → only native
+    # e.g. native_status=!I → exclude introduced
+    # e.g. native_status=N,U → native OR uncertain
+    native_status: Optional[str] = Query(None, description="Filter by native status. Comma-separated values (N,I,U). Prefix with ! to exclude."),
+    # Boolean filters: "true" = must have, "false" = must NOT have, omit = no filter
+    wildlife: Optional[str] = Query(None, description="Filter by wildlife value: 'true', 'false', or omit"),
+    pollinator: Optional[str] = Query(None, description="Filter by pollinator value: 'true', 'false', or omit"),
+    wetland: Optional[str] = Query(None, description="Filter by wetland status: 'true', 'false', or omit"),
+    # Duration filter: comma-separated include values, prefix with ! to exclude
+    duration: Optional[str] = Query(None, description="Filter by duration. Comma-separated (Perennial,Annual,Biennial). Prefix with ! to exclude."),
+    # Legacy support
+    native_only: Optional[bool] = Query(None),
 ):
-    """Return plants, optionally filtered by category, native status, or search term."""
+    """Return plants with rich filtering support."""
     driver = get_driver()
 
     conditions = []
     params: dict = {"skip": skip, "limit": limit}
 
-    if native_only:
+    # ── Legacy native_only support ──
+    if native_only is True:
         conditions.append("p.native_status = 'N'")
 
+    # ── Native status filter ──
+    if native_status:
+        if native_status.startswith("!"):
+            # Exclude these values
+            excluded = [v.strip() for v in native_status[1:].split(",") if v.strip()]
+            if excluded:
+                excl_list = ", ".join([f"'{v}'" for v in excluded])
+                conditions.append(f"NOT p.native_status IN [{excl_list}]")
+        else:
+            # Include only these values
+            included = [v.strip() for v in native_status.split(",") if v.strip()]
+            if included:
+                incl_list = ", ".join([f"'{v}'" for v in included])
+                conditions.append(f"p.native_status IN [{incl_list}]")
+
+    # ── Category filter ──
     if category and category != "all":
         target_habits = [
             k for k, v in CATEGORY_MAP.items()
@@ -197,12 +251,38 @@ def get_plants(
             )
             conditions.append(f"({habit_conditions})")
 
+    # ── Search filter ──
     if search:
         conditions.append(
             "(toLower(p.scientific_name) CONTAINS toLower($search) OR "
             "toLower(p.common_name) CONTAINS toLower($search))"
         )
         params["search"] = search
+
+    # ── Boolean filters ──
+    bool_field_map = {
+        "wildlife": "has_wildlife_value",
+        "pollinator": "has_pollinator_value",
+        "wetland": "has_wetland_data",
+    }
+    for filter_key, db_field in bool_field_map.items():
+        filter_val = {"wildlife": wildlife, "pollinator": pollinator, "wetland": wetland}[filter_key]
+        if filter_val == "true":
+            conditions.append(f"p.{db_field} = 'True'")
+        elif filter_val == "false":
+            conditions.append(f"(p.{db_field} IS NULL OR p.{db_field} = 'False')")
+
+    # ── Duration filter ──
+    if duration:
+        if duration.startswith("!"):
+            excluded_durations = [v.strip() for v in duration[1:].split(",") if v.strip()]
+            for d in excluded_durations:
+                conditions.append(f"NOT p.duration CONTAINS '{d}'")
+        else:
+            included_durations = [v.strip() for v in duration.split(",") if v.strip()]
+            if included_durations:
+                dur_conditions = " OR ".join([f"p.duration CONTAINS '{d}'" for d in included_durations])
+                conditions.append(f"({dur_conditions})")
 
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
@@ -220,6 +300,9 @@ def get_plants(
         "       p.usda_symbol AS usda_symbol, "
         "       p.duration AS duration, "
         "       p.plant_group AS plant_group, "
+        "       p.has_wildlife_value AS has_wildlife_value, "
+        "       p.has_pollinator_value AS has_pollinator_value, "
+        "       p.has_wetland_data AS has_wetland_data, "
         "       thumbnail "
         "ORDER BY p.scientific_name "
         "SKIP $skip LIMIT $limit"

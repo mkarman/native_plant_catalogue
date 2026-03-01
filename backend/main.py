@@ -51,6 +51,7 @@ CATEGORY_MAP = {
     "Lichenous": "Lichens",
 }
 
+# Preferred exemplar USDA symbols — used as hints but not required to have images
 CATEGORY_EXEMPLARS = {
     "Trees": "ACRU",
     "Shrubs": "COCO6",
@@ -132,8 +133,15 @@ def get_scrape_progress():
 
 @app.get("/api/categories")
 def get_categories():
-    """Return all plant categories with plant counts and an exemplar image URL."""
+    """
+    Return all plant categories with plant counts and an exemplar image URL.
+    The exemplar image is dynamically selected: prefers the hardcoded exemplar
+    symbol if it has an image, otherwise falls back to any native plant in that
+    category that has an image.
+    """
     driver = get_driver()
+
+    # Get habit counts
     with driver.session() as session:
         result = session.run(
             "MATCH (p:Plant) "
@@ -141,31 +149,71 @@ def get_categories():
         )
         habit_counts = {r["habit"]: r["count"] for r in result if r["habit"]}
 
+    # Aggregate into display categories
     category_counts: dict[str, int] = {}
     for habit, count in habit_counts.items():
         cat = growth_habit_to_category(habit)
         category_counts[cat] = category_counts.get(cat, 0) + count
 
+    # For each category, find an exemplar image dynamically
+    # Strategy: try preferred symbol first, then any native plant with an image in that category
     categories = []
     for cat, count in sorted(category_counts.items(), key=lambda x: -x[1]):
         exemplar_image = None
-        exemplar_symbol = CATEGORY_EXEMPLARS.get(cat)
-        if exemplar_symbol:
-            with driver.session() as session:
+        exemplar_name = None
+        slug = cat.lower().replace(" ", "-").replace("&", "and")
+
+        # Get the growth habits that map to this category
+        target_habits = [k for k, v in CATEGORY_MAP.items() if v == cat]
+
+        with driver.session() as session:
+            # 1. Try preferred exemplar symbol first
+            preferred_sym = CATEGORY_EXEMPLARS.get(cat)
+            if preferred_sym:
                 r = session.run(
                     "MATCH (p:Plant {usda_symbol: $sym})-[:HAS_IMAGE]->(i:Image) "
-                    "RETURN i.url AS url LIMIT 1",
-                    sym=exemplar_symbol
+                    "RETURN i.url AS url, p.common_name AS name LIMIT 1",
+                    sym=preferred_sym
                 )
                 row = r.single()
                 if row:
                     exemplar_image = row["url"]
+                    exemplar_name = row["name"]
+
+            # 2. Fall back to any native plant in this category with an image
+            if not exemplar_image and target_habits:
+                habit_list = " OR ".join([f"p.growth_habit_primary = '{h}'" for h in target_habits])
+                r2 = session.run(
+                    f"MATCH (p:Plant)-[:HAS_IMAGE]->(i:Image) "
+                    f"WHERE ({habit_list}) AND p.native_status = 'N' "
+                    f"RETURN i.url AS url, p.common_name AS name "
+                    f"ORDER BY p.scientific_name LIMIT 1"
+                )
+                row2 = r2.single()
+                if row2:
+                    exemplar_image = row2["url"]
+                    exemplar_name = row2["name"]
+
+            # 3. Last resort: any plant in this category with an image (including non-native)
+            if not exemplar_image and target_habits:
+                habit_list = " OR ".join([f"p.growth_habit_primary = '{h}'" for h in target_habits])
+                r3 = session.run(
+                    f"MATCH (p:Plant)-[:HAS_IMAGE]->(i:Image) "
+                    f"WHERE ({habit_list}) "
+                    f"RETURN i.url AS url, p.common_name AS name "
+                    f"ORDER BY p.scientific_name LIMIT 1"
+                )
+                row3 = r3.single()
+                if row3:
+                    exemplar_image = row3["url"]
+                    exemplar_name = row3["name"]
 
         categories.append({
             "name": cat,
             "count": count,
             "exemplar_image": exemplar_image,
-            "slug": cat.lower().replace(" ", "-").replace("&", "and"),
+            "exemplar_name": exemplar_name,
+            "slug": slug,
         })
 
     driver.close()

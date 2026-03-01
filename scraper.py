@@ -1,12 +1,12 @@
 """
 Plant Data Enrichment Scraper
 =============================
-Iterates through all Plant nodes in Neo4j, fetches enrichment data from:
+Iterates through Plant nodes in Neo4j that still need enrichment, fetches data from:
   1. USDA PlantProfile API  - growth habits, durations, group, taxonomy ancestors
   2. GBIF Species API       - kingdom, phylum, class, order, family, genus
   3. Wikimedia Commons API  - plant images searched by scientific name
 
-Stores all results back into Neo4j as node properties and Image nodes.
+Only processes plants that are missing data (skips already-enriched plants).
 """
 
 import time
@@ -21,7 +21,7 @@ NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "plantcatalogue"
 
 IMAGE_DIR = "images"
-REQUEST_DELAY = 0.5   # seconds between API calls
+REQUEST_DELAY = 0.5
 
 BROWSER_HEADERS = {
     "User-Agent": (
@@ -35,7 +35,6 @@ BROWSER_HEADERS = {
 
 USDA_API = "https://plantsservices.sc.egov.usda.gov/api/PlantProfile"
 GBIF_API = "https://api.gbif.org/v1/species"
-WIKI_API = "https://en.wikipedia.org/w/api.php"
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 
 
@@ -47,13 +46,40 @@ class Neo4jDatabase:
     def close(self):
         self.driver.close()
 
+    def get_plants_needing_images(self):
+        """Return plants that have no images yet."""
+        with self.driver.session() as session:
+            result = session.run(
+                "MATCH (p:Plant) WHERE NOT (p)-[:HAS_IMAGE]->() "
+                "RETURN p.scientific_name AS scientific_name, "
+                "       p.usda_symbol AS usda_symbol, "
+                "       p.common_name AS common_name, "
+                "       p.phylum AS phylum "
+                "ORDER BY p.scientific_name"
+            )
+            return [dict(r) for r in result]
+
+    def get_plants_needing_gbif(self):
+        """Return plants that have no GBIF taxonomy yet."""
+        with self.driver.session() as session:
+            result = session.run(
+                "MATCH (p:Plant) WHERE p.phylum IS NULL "
+                "RETURN p.scientific_name AS scientific_name, "
+                "       p.usda_symbol AS usda_symbol, "
+                "       p.common_name AS common_name "
+                "ORDER BY p.scientific_name"
+            )
+            return [dict(r) for r in result]
+
     def get_all_plants(self):
+        """Return all plants (for full re-enrichment)."""
         with self.driver.session() as session:
             result = session.run(
                 "MATCH (p:Plant) "
                 "RETURN p.scientific_name AS scientific_name, "
                 "       p.usda_symbol AS usda_symbol, "
-                "       p.common_name AS common_name"
+                "       p.common_name AS common_name, "
+                "       p.phylum AS phylum"
             )
             return [dict(r) for r in result]
 
@@ -120,36 +146,24 @@ def fetch_usda_profile(symbol: str) -> dict:
         return {}
 
     props = {}
-
-    # Growth habits (list → comma string)
     habits = data.get("GrowthHabits") or []
     if habits:
         props["growth_habits"] = ", ".join(habits)
         props["growth_habit_primary"] = habits[0]
-
-    # Durations
     durations = data.get("Durations") or []
     if durations:
         props["duration"] = ", ".join(durations)
-
-    # Taxonomic group (Dicot, Monocot, Gymnosperm, etc.)
     if data.get("Group"):
         props["plant_group"] = data["Group"]
-
-    # Rank
     if data.get("Rank"):
         props["rank"] = data["Rank"]
-
-    # Profile image filename (store for reference)
     if data.get("ProfileImageFilename"):
         props["usda_image_filename"] = data["ProfileImageFilename"]
 
-    # Taxonomy from Ancestors list
     ancestors = data.get("Ancestors") or []
     for anc in ancestors:
         rank = (anc.get("Rank") or "").lower()
         sym = anc.get("Symbol") or ""
-        name = anc.get("CommonName") or ""
         if rank == "kingdom":
             props["kingdom"] = sym
         elif rank == "subkingdom":
@@ -165,17 +179,14 @@ def fetch_usda_profile(symbol: str) -> dict:
         elif rank == "genus":
             props["genus"] = sym
 
-    # Has fruit / wildlife / pollinator flags
     props["has_wildlife_value"] = str(data.get("HasWildlife", False))
     props["has_pollinator_value"] = str(data.get("HasPollinator", False))
     props["has_wetland_data"] = str(data.get("HasWetlandData", False))
-
     return props
 
 
 def fetch_gbif_taxonomy(scientific_name: str) -> dict:
     """Fetch GBIF taxonomy for a scientific name."""
-    # Use just genus + species for best match
     name_parts = scientific_name.split()
     query_name = " ".join(name_parts[:2]) if len(name_parts) >= 2 else scientific_name
 
@@ -203,13 +214,32 @@ def fetch_gbif_taxonomy(scientific_name: str) -> dict:
 def fetch_wikimedia_images(scientific_name: str, max_images: int = 3) -> list:
     """
     Search Wikimedia Commons for images of a plant by scientific name.
+    Falls back to genus-only search for obscure species (e.g. mosses).
     Returns list of (image_url, title) tuples.
     """
-    # Search Commons for the scientific name
+    name_parts = scientific_name.split()
+    genus_species = " ".join(name_parts[:2]) if len(name_parts) >= 2 else scientific_name
+    genus_only = name_parts[0] if name_parts else scientific_name
+
+    # Try full genus+species first, then genus only for obscure species
+    search_queries = [genus_species]
+    if genus_species != genus_only:
+        search_queries.append(genus_only)
+
+    for query in search_queries:
+        results = _search_commons(query, max_images)
+        if results:
+            return results
+
+    return []
+
+
+def _search_commons(query: str, max_images: int) -> list:
+    """Search Wikimedia Commons for images matching a query."""
     search_params = {
         "action": "query",
         "list": "search",
-        "srsearch": f"{scientific_name} plant",
+        "srsearch": f"{query} plant",
         "srnamespace": "6",  # File namespace
         "srlimit": max_images * 2,
         "format": "json",
@@ -228,7 +258,6 @@ def fetch_wikimedia_images(scientific_name: str, max_images: int = 3) -> list:
         if not titles:
             return []
 
-        # Get image URLs for those titles
         info_params = {
             "action": "query",
             "titles": "|".join(titles),
@@ -281,43 +310,57 @@ def download_image(image_url: str, symbol: str, index: int) -> str:
 
 
 # ── Main scrape loop ──────────────────────────────────────────────────────────
-def scrape_all():
+def scrape_all(images_only: bool = False):
+    """
+    Main enrichment loop.
+    images_only=True: only fetch images for plants that don't have any yet.
+    images_only=False: full enrichment (USDA + GBIF + images) for all plants.
+    """
     db = Neo4jDatabase(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
-    plants = db.get_all_plants()
+
+    if images_only:
+        plants = db.get_plants_needing_images()
+        print(f"Image-only mode: {len(plants)} plants need images\n")
+    else:
+        plants = db.get_all_plants()
+        print(f"Full enrichment mode: {len(plants)} plants\n")
+
     total = len(plants)
-    print(f"Starting enrichment for {total} plants...\n")
 
     for i, plant in enumerate(plants):
         sci_name = plant["scientific_name"]
         symbol = plant.get("usda_symbol") or ""
+        has_gbif = bool(plant.get("phylum"))
         print(f"[{i+1}/{total}] {sci_name} (symbol={symbol or 'none'})")
 
         props = {}
 
-        # 1. USDA PlantProfile (only if we have a symbol)
-        if symbol:
-            usda_props = fetch_usda_profile(symbol)
-            props.update(usda_props)
-            if usda_props:
-                print(f"  USDA: growth_habits={usda_props.get('growth_habits')}, "
-                      f"group={usda_props.get('plant_group')}, "
-                      f"family={usda_props.get('family')}")
-            time.sleep(REQUEST_DELAY)
+        if not images_only:
+            # 1. USDA PlantProfile (only if we have a symbol)
+            if symbol:
+                usda_props = fetch_usda_profile(symbol)
+                props.update(usda_props)
+                if usda_props:
+                    print(f"  USDA: growth_habits={usda_props.get('growth_habits')}, "
+                          f"group={usda_props.get('plant_group')}, "
+                          f"family={usda_props.get('family')}")
+                time.sleep(REQUEST_DELAY)
 
-        # 2. GBIF taxonomy
-        gbif_props = fetch_gbif_taxonomy(sci_name)
-        props.update(gbif_props)
-        if gbif_props:
-            print(f"  GBIF: phylum={gbif_props.get('phylum')}, "
-                  f"class={gbif_props.get('gbif_class')}, "
-                  f"family={gbif_props.get('family')}")
-        time.sleep(REQUEST_DELAY)
+            # 2. GBIF taxonomy (skip if already have it)
+            if not has_gbif:
+                gbif_props = fetch_gbif_taxonomy(sci_name)
+                props.update(gbif_props)
+                if gbif_props:
+                    print(f"  GBIF: phylum={gbif_props.get('phylum')}, "
+                          f"class={gbif_props.get('gbif_class')}, "
+                          f"family={gbif_props.get('family')}")
+                time.sleep(REQUEST_DELAY)
 
-        # 3. Store enriched properties
-        if props:
-            db.update_plant(sci_name, props)
+            # 3. Store enriched properties
+            if props:
+                db.update_plant(sci_name, props)
 
-        # 4. Wikimedia images
+        # 4. Wikimedia images (always try for plants without images)
         images = fetch_wikimedia_images(sci_name, max_images=3)
         if images:
             print(f"  Images: found {len(images)}")
@@ -336,4 +379,7 @@ def scrape_all():
 
 
 if __name__ == "__main__":
-    scrape_all()
+    import sys
+    # Pass --images-only to only fetch missing images
+    images_only = "--images-only" in sys.argv
+    scrape_all(images_only=images_only)

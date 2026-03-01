@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Style 2: Modern Minimal — Fauquier Native Plants</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --white:      #ffffff;
+      --off-white:  #f8f7f4;
+      --light-gray: #eeece8;
+      --mid-gray:   #9e9b94;
+      --dark:       #1a1916;
+      --accent:     #2d5a27;
+      --accent-lt:  #4a8c42;
+      --warm:       #c8a96e;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--white);
+      color: var(--dark);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 3rem;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--light-gray);
+    }
+
+    .nav-logo {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 1.1rem;
+      color: var(--dark);
+      text-decoration: none;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-logo span {
+      display: block;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 300;
+      color: var(--mid-gray);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--mid-gray);
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--dark); }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      padding-top: 72px;
+    }
+
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 5rem 4rem 5rem 5rem;
+    }
+
+    .hero-eyebrow {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      display: block;
+      width: 2rem;
+      height: 1px;
+      background: var(--accent);
+    }
+
+    .hero-title {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: clamp(2.5rem, 4vw, 4rem);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      color: var(--dark);
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-title em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .hero-desc {
+      font-size: 1rem;
+      font-weight: 300;
+      color: var(--mid-gray);
+      max-width: 380px;
+      margin-bottom: 2.5rem;
+      line-height: 1.8;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 2.5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--light-gray);
+    }
+
+    .hero-stat-num {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem;
+      color: var(--dark);
+      display: block;
+      line-height: 1;
+    }
+
+    .hero-stat-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--mid-gray);
+      margin-top: 0.3rem;
+      display: block;
+    }
+
+    .hero-right {
+      position: relative;
+      overflow: hidden;
+      background: var(--light-gray);
+    }
+
+    .hero-right img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .hero-right-placeholder {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #e8f0e4 0%, #c8d8c0 50%, #a8c0a0 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 6rem;
+    }
+
+    /* ── Categories section ── */
+    .categories-section {
+      padding: 6rem 5rem;
+      background: var(--off-white);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 3rem;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    .section-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.25rem;
+      letter-spacing: -0.02em;
+      color: var(--dark);
+    }
+
+    .section-count {
+      font-size: 0.85rem;
+      color: var(--mid-gray);
+      font-weight: 300;
+    }
+
+    /* ── Category cards ── */
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5px;
+      background: var(--light-gray);
+    }
+
+    .cat-card {
+      background: var(--white);
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      cursor: pointer;
+    }
+
+    .cat-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.4s;
+      filter: brightness(0.75) saturate(0.9);
+    }
+
+    .cat-card:hover img {
+      transform: scale(1.05);
+      filter: brightness(0.6) saturate(1.1);
+    }
+
+    .cat-card-placeholder {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #d4e4d0, #a8c4a0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+    }
+
+    .cat-card-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 1.75rem;
+      background: linear-gradient(transparent 30%, rgba(0,0,0,0.7) 100%);
+    }
+
+    .cat-card-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.4rem;
+      color: white;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.25rem;
+    }
+
+    .cat-card-count {
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.65);
+    }
+
+    .cat-card-arrow {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.9rem;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+
+    .cat-card:hover .cat-card-arrow {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 2rem 5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--light-gray);
+      font-size: 0.8rem;
+      color: var(--mid-gray);
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: var(--mid-gray);
+      font-weight: 300;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-right { height: 50vw; }
+      .hero-left { padding: 3rem 2rem; }
+      .categories-section { padding: 3rem 2rem; }
+      .cat-grid { grid-template-columns: repeat(2, 1fr); }
+      footer { flex-direction: column; gap: 1rem; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <a href="#" class="nav-logo">
+      Fauquier Native Plants
+      <span>Field Catalogue</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="http://localhost:3000">Catalogue</a></li>
+      <li><a href="http://localhost:3000/category/all">All Species</a></li>
+    </ul>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">Fauquier County, Virginia</div>
+      <h1 class="hero-title">
+        Native Plants<br>of the Virginia<br><em>Piedmont</em>
+      </h1>
+      <p class="hero-desc">
+        A visual catalogue of native, introduced, and naturalized plant species documented in Fauquier County — from towering oaks to delicate mosses.
+      </p>
+      <div class="hero-stats" id="hero-stats">
+        <div><span class="hero-stat-num" id="s-total">—</span><span class="hero-stat-label">Species</span></div>
+        <div><span class="hero-stat-num" id="s-native">—</span><span class="hero-stat-label">Native</span></div>
+        <div><span class="hero-stat-num" id="s-families">—</span><span class="hero-stat-label">Families</span></div>
+      </div>
+    </div>
+    <div class="hero-right" id="hero-img">
+      <div class="hero-right-placeholder">🌿</div>
+    </div>
+  </section>
+
+  <!-- Categories -->
+  <section class="categories-section">
+    <div class="section-header">
+      <div>
+        <div class="section-label">Browse by type</div>
+        <h2 class="section-title">Plant Categories</h2>
+      </div>
+      <span class="section-count" id="cat-count"></span>
+    </div>
+    <div class="cat-grid" id="cat-grid">
+      <div class="loading" style="grid-column:1/-1">Loading…</div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <span>Data: <a href="https://plants.usda.gov">USDA PLANTS</a> · <a href="https://www.gbif.org">GBIF</a> · <a href="https://commons.wikimedia.org">Wikimedia Commons</a></span>
+    <span>Fauquier County Native Plant Catalogue</span>
+  </footer>
+
+  <script>
+    const API = 'http://localhost:8000';
+    const ICONS = { Trees:'🌳', Shrubs:'🌿', Vines:'🌱', 'Wildflowers & Herbs':'🌸', 'Grasses & Sedges':'🌾', Ferns:'🌿', 'Mosses & Liverworts':'🍃', Other:'🌱' };
+
+    async function init() {
+      const [stats, cats] = await Promise.all([
+        fetch(`${API}/api/stats`).then(r => r.json()),
+        fetch(`${API}/api/categories`).then(r => r.json()),
+      ]);
+
+      document.getElementById('s-total').textContent = stats.total_plants.toLocaleString();
+      document.getElementById('s-native').textContent = stats.native_plants.toLocaleString();
+      document.getElementById('s-families').textContent = stats.unique_families.toLocaleString();
+
+      // Hero image from first category with an image
+      const withImg = (cats.categories || []).find(c => c.exemplar_image);
+      if (withImg) {
+        document.getElementById('hero-img').innerHTML = `<img src="${withImg.exemplar_image}" alt="${withImg.name}" />`;
+      }
+
+      const categories = cats.categories || [];
+      document.getElementById('cat-count').textContent = `${categories.length} categories`;
+
+      const grid = document.getElementById('cat-grid');
+      grid.innerHTML = categories.map(cat => `
+        <a href="http://localhost:3000/category/${cat.slug}" class="cat-card">
+          ${cat.exemplar_image
+            ? `<img src="${cat.exemplar_image}" alt="${cat.name}" onerror="this.outerHTML='<div class=cat-card-placeholder>${ICONS[cat.name]||'🌿'}</div>'" />`
+            : `<div class="cat-card-placeholder">${ICONS[cat.name]||'🌿'}</div>`
+          }
+          <div class="cat-card-overlay">
+            <div class="cat-card-name">${cat.name}</div>
+            <div class="cat-card-count">${cat.count} species</div>
+          </div>
+          <div class="cat-card-arrow">→</div>
+        </a>
+      `).join('');
+    }
+
+    init();
+  </script>
+</body>
+</html>

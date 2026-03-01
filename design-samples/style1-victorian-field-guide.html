@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Style 1: Victorian Field Guide — Fauquier Native Plants</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=IM+Fell+English:ital@0;1&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --parchment:    #f5edd6;
+      --parchment-dk: #e8d9b5;
+      --ink:          #2c1a0e;
+      --ink-mid:      #5c3d1e;
+      --ink-light:    #8b6340;
+      --moss:         #4a5e2a;
+      --moss-light:   #7a8c4a;
+      --rust:         #8b3a1a;
+      --gold:         #c8922a;
+      --border:       #b8965a;
+    }
+
+    body {
+      background: var(--parchment);
+      color: var(--ink);
+      font-family: 'Crimson Text', Georgia, serif;
+      font-size: 18px;
+      line-height: 1.6;
+      background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    }
+
+    /* ── Decorative border frame ── */
+    .page-frame {
+      max-width: 1100px;
+      margin: 2rem auto;
+      border: 3px double var(--border);
+      box-shadow: 0 0 0 6px var(--parchment), 0 0 0 8px var(--border);
+      padding: 0;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--ink);
+      color: var(--parchment);
+      text-align: center;
+      padding: 3rem 2rem 2.5rem;
+      position: relative;
+      border-bottom: 4px solid var(--gold);
+    }
+
+    .header::before, .header::after {
+      content: '✦';
+      position: absolute;
+      top: 1.5rem;
+      font-size: 1.2rem;
+      color: var(--gold);
+      opacity: 0.6;
+    }
+    .header::before { left: 2rem; }
+    .header::after  { right: 2rem; }
+
+    .header-ornament {
+      font-size: 1.5rem;
+      color: var(--gold);
+      letter-spacing: 0.5em;
+      margin-bottom: 0.5rem;
+      opacity: 0.8;
+    }
+
+    .header h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1.1;
+      margin-bottom: 0.5rem;
+    }
+
+    .header-subtitle {
+      font-family: 'IM Fell English', Georgia, serif;
+      font-style: italic;
+      font-size: 1.1rem;
+      color: var(--parchment-dk);
+      letter-spacing: 0.05em;
+      margin-bottom: 1.5rem;
+    }
+
+    .header-rule {
+      width: 200px;
+      height: 1px;
+      background: var(--gold);
+      margin: 1rem auto;
+      position: relative;
+    }
+    .header-rule::before {
+      content: '❧';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--ink);
+      padding: 0 0.5rem;
+      color: var(--gold);
+      font-size: 1.2rem;
+    }
+
+    .header-stats {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--gold);
+      display: block;
+    }
+
+    .stat-label {
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      font-size: 0.85rem;
+      color: var(--parchment-dk);
+      text-transform: lowercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Section heading ── */
+    .section-heading {
+      text-align: center;
+      padding: 2.5rem 2rem 1rem;
+    }
+
+    .section-heading h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      color: var(--ink);
+      letter-spacing: 0.05em;
+    }
+
+    .section-heading p {
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      color: var(--ink-light);
+      margin-top: 0.5rem;
+    }
+
+    .ornamental-divider {
+      text-align: center;
+      color: var(--border);
+      font-size: 1.2rem;
+      letter-spacing: 0.5em;
+      margin: 0.5rem 0 1.5rem;
+    }
+
+    /* ── Category grid ── */
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0;
+      padding: 0 2rem 2rem;
+    }
+
+    .category-card {
+      border: 1px solid var(--border);
+      margin: 0.5rem;
+      background: var(--parchment);
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .category-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 4px 4px 12px rgba(44, 26, 14, 0.2);
+    }
+
+    .category-card::before {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border: 1px solid var(--border);
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.4;
+    }
+
+    .card-image-wrap {
+      position: relative;
+      height: 200px;
+      overflow: hidden;
+    }
+
+    .card-image-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: sepia(30%) contrast(0.9) brightness(0.95);
+      transition: filter 0.3s;
+    }
+
+    .category-card:hover .card-image-wrap img {
+      filter: sepia(10%) contrast(1) brightness(1);
+    }
+
+    .card-image-placeholder {
+      width: 100%;
+      height: 200px;
+      background: var(--parchment-dk);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+    }
+
+    .card-image-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: linear-gradient(transparent, rgba(44, 26, 14, 0.5));
+    }
+
+    .card-body {
+      padding: 1rem 1.25rem 1.25rem;
+      border-top: 2px solid var(--border);
+      background: var(--parchment);
+    }
+
+    .card-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 0.25rem;
+    }
+
+    .card-count {
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      font-size: 0.9rem;
+      color: var(--ink-light);
+    }
+
+    .card-count span {
+      color: var(--moss);
+      font-weight: 600;
+      font-style: normal;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      background: var(--ink);
+      color: var(--parchment-dk);
+      text-align: center;
+      padding: 1.5rem;
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      font-size: 0.9rem;
+      border-top: 4px solid var(--gold);
+    }
+
+    .footer a { color: var(--gold); }
+
+    /* ── Loading ── */
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      color: var(--ink-light);
+    }
+  </style>
+</head>
+<body>
+  <div class="page-frame">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-ornament">✦ ✦ ✦</div>
+      <h1>A Catalogue of Native Plants</h1>
+      <div class="header-subtitle">of Fauquier County, Virginia</div>
+      <div class="header-rule"></div>
+      <p style="font-family:'IM Fell English',serif; font-style:italic; color:var(--parchment-dk); font-size:0.95rem; max-width:500px; margin:0 auto 1.5rem;">
+        A systematic record of vascular plants, mosses, and liverworts indigenous to the Virginia Piedmont
+      </p>
+      <div class="header-stats" id="stats-row">
+        <div class="stat"><span class="stat-number">—</span><span class="stat-label">Species Recorded</span></div>
+        <div class="stat"><span class="stat-number">—</span><span class="stat-label">Native Species</span></div>
+        <div class="stat"><span class="stat-number">—</span><span class="stat-label">Plant Families</span></div>
+      </div>
+    </header>
+
+    <!-- Section heading -->
+    <div class="section-heading">
+      <h2>Browse by Growth Form</h2>
+      <div class="ornamental-divider">— ❦ —</div>
+      <p>Select a category to view the illustrated plates and descriptions</p>
+    </div>
+
+    <!-- Category grid -->
+    <div class="category-grid" id="category-grid">
+      <div class="loading">Consulting the herbarium records…</div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Data sourced from the <a href="https://plants.usda.gov">USDA PLANTS Database</a>, <a href="https://www.gbif.org">GBIF</a>, and <a href="https://commons.wikimedia.org">Wikimedia Commons</a></p>
+    </footer>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8000';
+    const ICONS = { Trees:'🌳', Shrubs:'🌿', Vines:'🌱', 'Wildflowers & Herbs':'🌸', 'Grasses & Sedges':'🌾', Ferns:'🌿', 'Mosses & Liverworts':'🍃', Other:'🌱' };
+
+    async function loadStats() {
+      const d = await fetch(`${API}/api/stats`).then(r => r.json());
+      const nums = document.querySelectorAll('.stat-number');
+      nums[0].textContent = d.total_plants.toLocaleString();
+      nums[1].textContent = d.native_plants.toLocaleString();
+      nums[2].textContent = d.unique_families.toLocaleString();
+    }
+
+    async function loadCategories() {
+      const grid = document.getElementById('category-grid');
+      const d = await fetch(`${API}/api/categories`).then(r => r.json());
+      const cats = d.categories || [];
+
+      if (!cats.length) { grid.innerHTML = '<div class="loading">No categories found.</div>'; return; }
+
+      grid.innerHTML = cats.map(cat => `
+        <a href="http://localhost:3000/category/${cat.slug}" class="category-card">
+          <div class="card-image-wrap">
+            ${cat.exemplar_image
+              ? `<img src="${cat.exemplar_image}" alt="${cat.name}" onerror="this.parentElement.innerHTML='<div class=card-image-placeholder>${ICONS[cat.name]||'🌿'}</div>'" /><div class="card-image-overlay"></div>`
+              : `<div class="card-image-placeholder">${ICONS[cat.name]||'🌿'}</div>`
+            }
+          </div>
+          <div class="card-body">
+            <div class="card-name">${cat.name}</div>
+            <div class="card-count"><span>${cat.count}</span> species recorded</div>
+          </div>
+        </a>
+      `).join('');
+    }
+
+    loadStats();
+    loadCategories();
+  </script>
+</body>
+</html>

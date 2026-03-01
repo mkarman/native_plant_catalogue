@@ -1,22 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
-function ProgressBar({ percent, color = 'var(--green-mid)' }) {
+function ProgressBar({ percent, color = 'var(--moss)' }) {
   return (
-    <div style={{
-      background: '#e0e0e0',
-      borderRadius: '999px',
-      height: '12px',
-      overflow: 'hidden',
-      margin: '0.4rem 0 0.75rem',
-    }}>
-      <div style={{
-        width: `${Math.min(percent, 100)}%`,
-        height: '100%',
-        background: color,
-        borderRadius: '999px',
-        transition: 'width 0.6s ease',
-      }} />
+    <div className="progress-bar-wrap">
+      <div
+        className="progress-bar-fill"
+        style={{ width: `${Math.min(percent, 100)}%`, background: color }}
+      />
     </div>
   )
 }
@@ -34,19 +25,16 @@ export default function ScrapePage() {
         setData(d)
         setHistory(prev => {
           const now = new Date().toLocaleTimeString()
-          const entry = {
+          return [...prev.slice(-19), {
             time: now,
             gbif: d.gbif_enriched,
             usda: d.usda_enriched,
             images: d.plants_with_images,
             chars: d.characteristics_enriched || 0,
-          }
-          return [...prev.slice(-19), entry]
+          }]
         })
         setError(null)
-        if (d.complete) {
-          clearInterval(intervalRef.current)
-        }
+        if (d.complete) clearInterval(intervalRef.current)
       })
       .catch(err => setError(err.message))
   }
@@ -57,148 +45,136 @@ export default function ScrapePage() {
     return () => clearInterval(intervalRef.current)
   }, [])
 
+  const bars = data ? [
+    { label: 'USDA Plant Profiles', sublabel: 'growth habit, taxonomy, duration', pct: data.usda_percent, color: 'var(--moss)', val: data.usda_enriched },
+    { label: 'GBIF Taxonomy', sublabel: 'phylum, class, order, family', pct: data.gbif_percent, color: '#5a9ad4', val: data.gbif_enriched },
+    { label: 'Plant Images', sublabel: 'Wikimedia Commons', pct: data.images_percent, color: '#9a7ad4', val: data.plants_with_images },
+    { label: 'Characteristics', sublabel: 'Wikipedia, GBIF phenology, IUCN status', pct: data.characteristics_percent || 0, color: 'var(--gold)', val: data.characteristics_enriched || 0 },
+  ] : []
+
   return (
-    <div className="section">
-      <div className="container" style={{ maxWidth: 800 }}>
-        <div className="breadcrumb">
-          <Link to="/">Home</Link>
-          <span>›</span>
-          <span>Scrape Progress</span>
-        </div>
-
-        <h2 className="section__title">Data Enrichment Progress</h2>
-        <p className="section__subtitle">
-          Auto-refreshes every 5 seconds &mdash; scraping USDA, GBIF, Wikipedia, and Wikimedia Commons
-        </p>
-
-        {error && <div className="error">API error: {error}</div>}
-
-        {data && (
-          <>
-            {/* Status badge */}
-            <div style={{
-              display: 'inline-block',
-              padding: '0.3rem 1rem',
-              borderRadius: '999px',
-              background: data.complete ? '#e8f5e9' : '#fff3e0',
-              color: data.complete ? 'var(--green-dark)' : '#e65100',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              marginBottom: '1.5rem',
-            }}>
-              {data.complete ? 'Complete' : 'Running…'}
-            </div>
-
-            {/* Progress cards */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-              gap: '1rem',
-              marginBottom: '2rem',
-            }}>
-              {[
-                { label: 'Total Plants', value: data.total_plants.toLocaleString(), color: 'var(--green-dark)' },
-                { label: 'USDA Enriched', value: `${data.usda_enriched.toLocaleString()} (${data.usda_percent}%)`, color: 'var(--green-mid)' },
-                { label: 'GBIF Taxonomy', value: `${data.gbif_enriched.toLocaleString()} (${data.gbif_percent}%)`, color: '#1565c0' },
-                { label: 'Plants w/ Images', value: `${data.plants_with_images.toLocaleString()} (${data.images_percent}%)`, color: '#6a1b9a' },
-                { label: 'Total Images', value: data.total_images_downloaded.toLocaleString(), color: '#4e342e' },
-                { label: 'Characteristics', value: `${(data.characteristics_enriched || 0).toLocaleString()} (${data.characteristics_percent || 0}%)`, color: '#00695c' },
-              ].map(card => (
-                <div key={card.label} style={{
-                  background: 'white',
-                  borderRadius: 'var(--radius)',
-                  padding: '1.25rem',
-                  boxShadow: 'var(--shadow)',
-                }}>
-                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-light)', marginBottom: '0.4rem' }}>
-                    {card.label}
-                  </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: card.color, fontFamily: 'var(--font-serif)' }}>
-                    {card.value}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Progress bars */}
-            <div style={{ background: 'white', borderRadius: 'var(--radius)', padding: '1.5rem', boxShadow: 'var(--shadow)', marginBottom: '2rem' }}>
-              <h3 style={{ fontFamily: 'var(--font-serif)', color: 'var(--green-dark)', marginBottom: '1rem' }}>Enrichment Progress</h3>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                  <span>USDA Plant Profiles (growth habit, taxonomy, duration)</span>
-                  <strong>{data.usda_percent}%</strong>
-                </div>
-                <ProgressBar percent={data.usda_percent} color="var(--green-mid)" />
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                  <span>GBIF Taxonomy (phylum, class, order, family)</span>
-                  <strong>{data.gbif_percent}%</strong>
-                </div>
-                <ProgressBar percent={data.gbif_percent} color="#1565c0" />
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                  <span>Plant Images (Wikimedia Commons)</span>
-                  <strong>{data.images_percent}%</strong>
-                </div>
-                <ProgressBar percent={data.images_percent} color="#6a1b9a" />
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                  <span>Characteristics (Wikipedia, GBIF phenology, IUCN status)</span>
-                  <strong>{data.characteristics_percent || 0}%</strong>
-                </div>
-                <ProgressBar percent={data.characteristics_percent || 0} color="#00695c" />
-              </div>
-            </div>
-
-            {/* Activity log */}
-            {history.length > 1 && (
-              <div style={{ background: 'white', borderRadius: 'var(--radius)', padding: '1.5rem', boxShadow: 'var(--shadow)', marginBottom: '2rem' }}>
-                <h3 style={{ fontFamily: 'var(--font-serif)', color: 'var(--green-dark)', marginBottom: '1rem' }}>Activity Log</h3>
-                <div style={{ fontFamily: 'monospace', fontSize: '0.8rem', maxHeight: '200px', overflowY: 'auto' }}>
-                  {[...history].reverse().map((h, i) => (
-                    <div key={i} style={{ padding: '0.2rem 0', borderBottom: '1px solid #f0f0f0', color: i === 0 ? 'var(--green-dark)' : 'var(--text-mid)' }}>
-                      <span style={{ color: 'var(--text-light)', marginRight: '1rem' }}>{h.time}</span>
-                      USDA: {h.usda} | GBIF: {h.gbif} | Images: {h.images} | Chars: {h.chars}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Recent plants */}
-            {data.recent_plants && data.recent_plants.length > 0 && (
-              <div style={{ background: 'white', borderRadius: 'var(--radius)', padding: '1.5rem', boxShadow: 'var(--shadow)' }}>
-                <h3 style={{ fontFamily: 'var(--font-serif)', color: 'var(--green-dark)', marginBottom: '1rem' }}>Recently Enriched</h3>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #eee' }}>
-                      <th style={{ textAlign: 'left', padding: '0.4rem 0.5rem', color: 'var(--text-light)' }}>Scientific Name</th>
-                      <th style={{ textAlign: 'left', padding: '0.4rem 0.5rem', color: 'var(--text-light)' }}>Growth Habit</th>
-                      <th style={{ textAlign: 'left', padding: '0.4rem 0.5rem', color: 'var(--text-light)' }}>Family</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.recent_plants.map((p, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                        <td style={{ padding: '0.4rem 0.5rem', fontStyle: 'italic' }}>{p.name}</td>
-                        <td style={{ padding: '0.4rem 0.5rem' }}>{p.habit || '—'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem' }}>{p.family || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
+    <div style={{ padding: '3rem', maxWidth: 900, margin: '0 auto' }}>
+      {/* Breadcrumb */}
+      <div className="breadcrumb">
+        <Link to="/">Home</Link>
+        <span>›</span>
+        <span>Data Enrichment Status</span>
       </div>
+
+      {/* Header */}
+      <div style={{ marginBottom: '2.5rem' }}>
+        <div className="section__eyebrow">Live status</div>
+        <h1 className="section__title">Data Enrichment Progress</h1>
+        <p className="section__subtitle">Auto-refreshes every 5 seconds</p>
+      </div>
+
+      {error && <div className="error">API error: {error}</div>}
+
+      {data && (
+        <>
+          {/* Status badge */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+            padding: '0.35rem 1rem',
+            border: `1px solid ${data.complete ? 'rgba(122,170,90,0.4)' : 'rgba(212,168,74,0.4)'}`,
+            color: data.complete ? 'var(--moss)' : 'var(--gold)',
+            fontSize: '0.75rem', fontWeight: 300, letterSpacing: '0.1em',
+            textTransform: 'uppercase', marginBottom: '2rem',
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: data.complete ? 'var(--moss)' : 'var(--gold)', animation: data.complete ? 'none' : 'pulse 1.5s ease-in-out infinite' }} />
+            {data.complete ? 'Complete' : 'Running'}
+          </div>
+
+          {/* Stat cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1px', background: 'var(--forest-light)', marginBottom: '2rem' }}>
+            {[
+              { label: 'Total Plants', value: data.total_plants.toLocaleString(), color: 'var(--cream)' },
+              { label: 'USDA Enriched', value: `${data.usda_enriched} (${data.usda_percent}%)`, color: 'var(--moss)' },
+              { label: 'GBIF Taxonomy', value: `${data.gbif_enriched} (${data.gbif_percent}%)`, color: '#5a9ad4' },
+              { label: 'With Images', value: `${data.plants_with_images} (${data.images_percent}%)`, color: '#9a7ad4' },
+              { label: 'Total Images', value: data.total_images_downloaded.toLocaleString(), color: 'var(--cream-dim)' },
+              { label: 'Characteristics', value: `${data.characteristics_enriched || 0} (${data.characteristics_percent || 0}%)`, color: 'var(--gold)' },
+            ].map(card => (
+              <div key={card.label} className="stat-card">
+                <div className="stat-card__label">{card.label}</div>
+                <div className="stat-card__value" style={{ color: card.color }}>{card.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Progress bars */}
+          <div className="detail-section" style={{ marginBottom: '1.5rem' }}>
+            <h3 className="detail-section__title">Enrichment Progress</h3>
+            {bars.map(bar => (
+              <div key={bar.label} style={{ marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.2rem' }}>
+                  <span style={{ color: 'var(--cream-dim)', fontWeight: 300 }}>
+                    {bar.label}
+                    <span style={{ color: 'var(--cream-faint)', marginLeft: '0.5rem', fontSize: '0.7rem' }}>— {bar.sublabel}</span>
+                  </span>
+                  <strong style={{ color: bar.color, fontWeight: 400 }}>{bar.pct}%</strong>
+                </div>
+                <ProgressBar percent={bar.pct} color={bar.color} />
+              </div>
+            ))}
+          </div>
+
+          {/* Activity log */}
+          {history.length > 1 && (
+            <div className="detail-section" style={{ marginBottom: '1.5rem' }}>
+              <h3 className="detail-section__title">Activity Log</h3>
+              <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', maxHeight: '200px', overflowY: 'auto' }}>
+                {[...history].reverse().map((h, i) => (
+                  <div key={i} style={{
+                    padding: '0.25rem 0',
+                    borderBottom: '1px solid var(--forest-light)',
+                    color: i === 0 ? 'var(--cream)' : 'var(--cream-faint)',
+                    display: 'flex', gap: '1rem',
+                  }}>
+                    <span style={{ color: 'var(--cream-faint)', minWidth: '5rem' }}>{h.time}</span>
+                    <span>USDA: <span style={{ color: 'var(--moss)' }}>{h.usda}</span></span>
+                    <span>GBIF: <span style={{ color: '#5a9ad4' }}>{h.gbif}</span></span>
+                    <span>Images: <span style={{ color: '#9a7ad4' }}>{h.images}</span></span>
+                    <span>Chars: <span style={{ color: 'var(--gold)' }}>{h.chars}</span></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recently enriched */}
+          {data.recent_plants && data.recent_plants.length > 0 && (
+            <div className="detail-section">
+              <h3 className="detail-section__title">Recently Enriched</h3>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--forest-light)' }}>
+                    {['Scientific Name', 'Growth Habit', 'Family'].map(h => (
+                      <th key={h} style={{ textAlign: 'left', padding: '0.4rem 0.5rem', color: 'var(--cream-faint)', fontWeight: 300, fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.recent_plants.map((p, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '0.4rem 0.5rem', fontStyle: 'italic', color: 'var(--cream-dim)', fontWeight: 200 }}>{p.name}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--moss)', fontWeight: 200 }}>{p.habit || '—'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--cream-faint)', fontWeight: 200 }}>{p.family || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+      `}</style>
     </div>
   )
 }
